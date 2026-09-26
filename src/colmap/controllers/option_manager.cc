@@ -424,6 +424,8 @@ void OptionManager::AddTwoViewGeometryOptions() {
                    &two_view_geometry->stationary_matches_max_error);
   AddDefaultOption("TwoViewGeometry.use_degensac",
                    &two_view_geometry->use_degensac);
+  AddDefaultOption("TwoViewGeometry.estimate_shared_focal",
+                   &two_view_geometry->estimate_shared_focal);
   AddDefaultOption("TwoViewGeometry.use_sampson_refinement",
                    &two_view_geometry->use_sampson_refinement);
   AddDefaultOption("TwoViewGeometry.max_error",

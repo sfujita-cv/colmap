@@ -75,6 +75,14 @@ struct TwoViewGeometryOptions {
   // plain LO-RANSAC, making estimation robust to a dominant scene plane.
   bool use_degensac = false;
 
+  // Jointly estimate the relative pose and a shared focal length with the
+  // six-point solver for pairs of views that share the same pinhole camera
+  // without a focal length prior. If false, such pairs are estimated through
+  // the fundamental matrix, as pairs of distinct uncalibrated cameras are.
+  // The six-point solver is considerably slower, most of all for pairs that
+  // fail verification, where RANSAC runs up to max_num_trials.
+  bool estimate_shared_focal = true;
+
   // Locally optimize the fundamental matrix by nonlinearly minimizing the
   // Sampson error over the inlier set, instead of refitting the linear
   // eight-point algorithm. The refinement optimizes the same residual RANSAC
