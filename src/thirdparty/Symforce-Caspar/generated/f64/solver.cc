@@ -6210,6 +6210,12 @@ void GraphSolver::DoBeta() {
       SimpleRadialPrincipalPoint_num_);
   BetaFromNumDenom(
       solver__beta_numerator_, solver__alpha_numerator_, solver__beta_);
+  // beta = (r_k^T z_k) / (r_{k-1}^T z_{k-1}): keep this iteration's r^T z as
+  // the denominator of the next beta. alpha_numerator is otherwise only
+  // written once (r_0^T z_0) in DoAlphaFirst.
+  Copy(solver__beta_numerator_,
+       solver__beta_numerator_ + 1,
+       solver__alpha_numerator_);
 }
 
 void GraphSolver::DoUpdateP() {
