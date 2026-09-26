@@ -703,7 +703,8 @@ TwoViewGeometry EstimateTwoViewGeometry(
       // Mixed spherical/uncalibrated pairs are caught above.
       return EstimateSphericalTwoViewGeometry(
           camera1, points1, camera2, points2, matches, options);
-    } else if (camera1.camera_id == camera2.camera_id &&
+    } else if (options.estimate_shared_focal &&
+               camera1.camera_id == camera2.camera_id &&
                !camera1.has_prior_focal_length &&
                camera1.IsPerspectivePinhole()) {
       // A single shared unknown focal. Multi-focal models (e.g. PINHOLE) are

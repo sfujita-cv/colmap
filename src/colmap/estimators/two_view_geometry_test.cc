@@ -790,6 +790,60 @@ TEST(EstimateTwoViewGeometry, SharedFocal) {
   }
 }
 
+TEST(EstimateTwoViewGeometry, SharedFocalDisabled) {
+  // With estimate_shared_focal disabled, a pair sharing one uncalibrated
+  // camera is estimated like a pair of distinct uncalibrated cameras: through
+  // the fundamental matrix, without an essential matrix or estimated
+  // intrinsics.
+  SetPRNGSeed(42);
+  Camera camera = Camera::CreateFromModelId(
+      /*camera_id=*/1,
+      PinholeCameraModel::model_id,
+      /*focal_length=*/1280.0,
+      /*width=*/2048,
+      /*height=*/2048);
+  camera.has_prior_focal_length = false;
+
+  const Rigid3d cam2_from_cam1(
+      Eigen::Quaterniond(Eigen::AngleAxisd(
+          DegToRad(30.0), Eigen::Vector3d(0.3, 1.0, 0.1).normalized())),
+      Eigen::Vector3d(1.0, 0.2, 0.1).normalized());
+
+  std::vector<Eigen::Vector2d> points1;
+  std::vector<Eigen::Vector2d> points2;
+  FeatureMatches matches;
+  while (points1.size() < 200) {
+    Eigen::Vector3d dir = RandomEigenVectord<3>();
+    dir.z() = std::abs(dir.z()) + 2.0;
+    const Eigen::Vector3d point_in_cam1 =
+        RandomUniformReal<double>(2.0, 5.0) * dir.normalized();
+    const Eigen::Vector3d point_in_cam2 = cam2_from_cam1 * point_in_cam1;
+    if (point_in_cam2.z() < 0.5) {
+      continue;
+    }
+    const std::optional<Eigen::Vector2d> xy1 = camera.ImgFromCam(point_in_cam1);
+    const std::optional<Eigen::Vector2d> xy2 = camera.ImgFromCam(point_in_cam2);
+    if (!xy1.has_value() || !xy2.has_value()) {
+      continue;
+    }
+    const point2D_t idx = static_cast<point2D_t>(points1.size());
+    points1.push_back(*xy1);
+    points2.push_back(*xy2);
+    matches.emplace_back(idx, idx);
+  }
+
+  TwoViewGeometryOptions two_view_geometry_options;
+  two_view_geometry_options.estimate_shared_focal = false;
+  const TwoViewGeometry geometry = EstimateTwoViewGeometry(
+      camera, points1, camera, points2, matches, two_view_geometry_options);
+  EXPECT_EQ(geometry.config, TwoViewGeometry::ConfigurationType::UNCALIBRATED);
+  EXPECT_TRUE(geometry.F.has_value());
+  EXPECT_FALSE(geometry.E.has_value());
+  EXPECT_FALSE(geometry.camera1.has_value());
+  EXPECT_FALSE(geometry.camera2.has_value());
+  EXPECT_GE(geometry.inlier_matches.size(), matches.size() / 2);
+}
+
 TEST(EstimateTwoViewGeometry, OneSidedFocal) {
   // Two distinct cameras where exactly one has a known focal length route to
   // the one-sided focal solver, which recovers the relative pose jointly with
