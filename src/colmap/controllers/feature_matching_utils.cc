@@ -12,6 +12,9 @@
 #if defined(COLMAP_CUDA_ENABLED)
 #include <cuda_runtime.h>
 #endif
+#ifdef _OPENMP
+#include <omp.h>
+#endif
 
 namespace colmap {
 
@@ -161,6 +164,14 @@ class VerifierWorker : public Thread {
 
  protected:
   void Run() override {
+#ifdef _OPENMP
+    // The verifier workers already verify pairs in parallel, one pair per
+    // worker. Keep OpenMP single-threaded within a worker, so that parallel
+    // regions entered during estimation (e.g., Eigen's parallelized products)
+    // do not make every worker the master of its own thread team, which
+    // oversubscribes the machine with threads spinning in the OpenMP runtime.
+    omp_set_num_threads(1);
+#endif
     while (true) {
       if (IsStopped()) {
         break;
