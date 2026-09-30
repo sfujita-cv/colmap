@@ -656,10 +656,35 @@ IncrementalMapperImpl::EstimateInitialTwoViewGeometry(
   two_view_geometry_options.ransac_options.max_error = options.init_max_error;
   two_view_geometry_options.ransac_options.random_seed = options.random_seed;
   // Delegate estimator selection to the general two-view geometry estimator so
-  // it lives in a single place. The relative pose is recovered separately
-  // below.
-  TwoViewGeometry two_view_geometry = EstimateTwoViewGeometry(
-      camera1, points1, camera2, points2, matches, two_view_geometry_options);
+  // it lives in a single place, except for two different cameras that both
+  // lack a focal-length prior. There, the general estimator recovers the pose
+  // from a fundamental matrix calibrated with the default focal-length guess
+  // (1.2 * max(width, height)), which can be off by a large factor, e.g. for an
+  // ultra-wide lens. The initial structure then comes out distorted, and an
+  // image registered on it early can end up with a diverged, even negative,
+  // focal length that bundle adjustment never recovers. The five-point
+  // estimate on the same default calibration, used for all initial pairs
+  // before the shared-focal integration, gives a structure that bundle
+  // adjustment refines into the correct focal lengths. The relative pose is
+  // recovered separately below.
+  const bool independent_unknown_focals =
+      camera1.camera_id != camera2.camera_id &&
+      !camera1.has_prior_focal_length && !camera2.has_prior_focal_length &&
+      camera1.IsPerspectivePinhole() && camera2.IsPerspectivePinhole();
+  TwoViewGeometry two_view_geometry =
+      independent_unknown_focals
+          ? EstimateCalibratedTwoViewGeometry(camera1,
+                                              points1,
+                                              camera2,
+                                              points2,
+                                              matches,
+                                              two_view_geometry_options)
+          : EstimateTwoViewGeometry(camera1,
+                                    points1,
+                                    camera2,
+                                    points2,
+                                    matches,
+                                    two_view_geometry_options);
 
   if (!EstimateTwoViewGeometryPose(
           camera1, points1, camera2, points2, &two_view_geometry)) {
